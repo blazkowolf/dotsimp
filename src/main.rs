@@ -63,8 +63,13 @@ struct Config {
 
 #[derive(Debug, Deserialize)]
 struct App {
-    path: PathBuf,
-    //#[serde(deserialize_with = "expand_glob")]
+    #[serde(default)]
+    links: Vec<Link>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Link {
+    path: String,
     target: String,
 }
 
@@ -111,14 +116,14 @@ fn main() -> Result<()> {
 
     let config = load_config(args.config_file)?;
 
-    // dbg!(config);
+    dbg!(config);
 
-    for path in glob(&config.apps["nvim"].target)
-        .unwrap()
-        .filter_map(core::result::Result::ok)
-    {
-        println!("{}", path.display());
-    }
+    // for path in glob(&config.apps["nvim"].links.as_ref().unwrap()[0].target)
+    //     .unwrap()
+    //     .filter_map(core::result::Result::ok)
+    // {
+    //     println!("{}", path.display());
+    // }
 
     // let var_re = Regex::new(r"\$(?P<var>\w+)").expect("This regex messed up somehow");
     // let var_re = Regex::new(r"(?P<var>\$(?P<name>\w+))").expect("This regex messed up somehow");
