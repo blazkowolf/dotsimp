@@ -11,7 +11,7 @@ pub enum DotsimpError {
 impl error::Error for DotsimpError {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match *self {
-            DotsimpError::MissingReqArg(ref _arg) => None,
+            DotsimpError::MissingReqArg(_arg) => None,
             DotsimpError::InvalidConfigPath(ref err) => Some(err),
         }
     }
@@ -20,7 +20,7 @@ impl error::Error for DotsimpError {
 impl fmt::Display for DotsimpError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            DotsimpError::MissingReqArg(ref arg) => f.write_fmt(format_args!(
+            DotsimpError::MissingReqArg(arg) => f.write_fmt(format_args!(
                 "Missing required command line argument: {}",
                 arg
             )),
