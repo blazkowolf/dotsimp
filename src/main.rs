@@ -16,16 +16,16 @@ mod model;
 mod prelude;
 
 /// Main program state
-pub struct Dotsimp {
+pub struct Dotsimp<'dotsimp> {
     /// Command-line arguments/options
     pub args: DotsimpArgs,
     /// Deserialized `.dotsimprc` toml configuration
-    pub config: Config,
+    pub config: Config<'dotsimp>,
     /// Handle to `stdout`
     pub writer: Stdout,
 }
 
-impl Dotsimp {
+impl<'dotsimp> Dotsimp<'dotsimp> {
     fn run(&self) -> Result<()> {
         for App { name, links } in self.config.apps.values() {
             writeln!(&self.writer, "[{name}] Creating links")?;
@@ -98,18 +98,13 @@ impl Dotsimp {
 // }
 // }}}
 
-fn load_config(path: impl AsRef<Path>) -> Result<Config> {
-    let path = path.as_ref().canonicalize()?;
-    let config_str = fs::read_to_string(path)?;
-
-    let config: Config = toml::from_str(&config_str).unwrap();
-
-    Ok(config)
-}
-
 fn main() -> Result<()> {
     let args = DotsimpArgs::try_from(env::args_os())?;
-    let config = load_config(&args.config_file)?;
+
+    let config_file_path = args.config_file.canonicalize()?;
+    let config_file_contents = &fs::read_to_string(config_file_path)?;
+
+    let config = toml::from_str(config_file_contents).unwrap();
     let writer = io::stdout();
     let dotsimp = Dotsimp {
         args,
