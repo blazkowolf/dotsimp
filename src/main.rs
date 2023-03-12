@@ -1,18 +1,16 @@
 use crate::args::DotsimpArgs;
-use crate::model::App;
+use crate::config::{App, Config};
 use crate::prelude::*;
-use model::Config;
 use regex::Captures;
 use regex::Regex;
 use std::env;
 use std::fs;
 use std::io::{self, Stdout, Write};
-use std::path::Path;
 use std::path::PathBuf;
 
 mod args;
+mod config;
 mod error;
-mod model;
 mod prelude;
 
 /// Main program state
@@ -67,44 +65,13 @@ impl<'dotsimp> Dotsimp<'dotsimp> {
     }
 }
 
-// models {{{
-
-// impl Paths {
-//     fn new(
-//         dir_patterns: Vec<Pattern>,
-//         require_dir: bool,
-//         options: MatchOptions,
-//         todo: Vec<core::result::Result<(PathBuf, usize), GlobError>>,
-//         scope: Option<PathBuf>,
-//     ) -> Self {
-//         Self {
-//             dir_patterns,
-//             require_dir,
-//             options,
-//             todo,
-//             scope,
-//         }
-//     }
-// }
-
-// #[derive(Debug, Deserialize)]
-// #[serde(remote = "Paths")]
-// struct PathsDef {
-//     dir_patterns: Vec<Pattern>,
-//     require_dir: bool,
-//     options: MatchOptions,
-//     todo: Vec<core::result::Result<(PathBuf, usize), GlobError>>,
-//     scope: Option<PathBuf>,
-// }
-// }}}
-
 fn main() -> Result<()> {
     let args = DotsimpArgs::try_from(env::args_os())?;
 
-    let config_file_path = args.config_file.canonicalize()?;
-    let config_file_contents = &fs::read_to_string(config_file_path)?;
+    let config_path = args.config_file.canonicalize()?;
+    let config_contents = &fs::read_to_string(config_path)?;
 
-    let config = toml::from_str(config_file_contents).unwrap();
+    let config = Config::from_toml(config_contents);
     let writer = io::stdout();
     let dotsimp = Dotsimp {
         args,
