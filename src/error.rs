@@ -1,3 +1,4 @@
+use crate::config::ConfigError;
 use std::error;
 use std::fmt;
 use std::io;
@@ -6,33 +7,39 @@ use std::io;
 pub enum DotsimpError {
     MissingReqArg(&'static str),
     InvalidConfigPath(io::Error),
+    Config(ConfigError),
 }
 
 impl error::Error for DotsimpError {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        use DotsimpError::*;
         match *self {
-            DotsimpError::MissingReqArg(_arg) => None,
-            DotsimpError::InvalidConfigPath(ref err) => Some(err),
+            MissingReqArg(_arg) => None,
+            InvalidConfigPath(ref err) => Some(err),
+            Config(ref err) => Some(err),
         }
     }
 }
 
 impl fmt::Display for DotsimpError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            DotsimpError::MissingReqArg(arg) => f.write_fmt(format_args!(
-                "Missing required command line argument: {}",
-                arg
-            )),
-            DotsimpError::InvalidConfigPath(ref _err) => {
-                f.write_str("Invalid config file path provided.")
-            }
+        use DotsimpError::*;
+        match self {
+            MissingReqArg(arg) => write!(f, "Missing required command line argument: {arg}"),
+            InvalidConfigPath(ref _err) => write!(f, "Invalid config file path provided."),
+            Config(ref err) => write!(f, "{err}"),
         }
     }
 }
 
 impl From<io::Error> for DotsimpError {
     fn from(value: io::Error) -> Self {
-        DotsimpError::InvalidConfigPath(value)
+        Self::InvalidConfigPath(value)
+    }
+}
+
+impl From<ConfigError> for DotsimpError {
+    fn from(value: ConfigError) -> Self {
+        Self::Config(value)
     }
 }

@@ -1,9 +1,13 @@
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::fmt;
-use std::fs;
-use std::io;
-use std::path::Path;
+
+pub mod app;
+pub mod error;
+pub mod link;
+
+pub use self::app::App;
+pub use self::error::ConfigError;
+pub use self::link::Link;
 
 #[derive(Debug, Default, Deserialize)]
 pub struct Config<'config> {
@@ -12,36 +16,17 @@ pub struct Config<'config> {
     pub apps: HashMap<&'config str, App<'config>>,
 }
 
-#[derive(Debug, Default, Deserialize)]
-pub struct App<'app> {
-    /// Display name for this application
-    pub name: &'app str,
+impl<'config> TryFrom<&'config str> for Config<'config> {
+    type Error = ConfigError;
 
-    /// Symlinks for this application
-    #[serde(borrow)]
-    #[serde(default)]
-    pub links: Vec<Link<'app>>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Link<'link> {
-    /// Path to the symlink
-    #[serde(borrow)]
-    pub path: &'link Path,
-
-    /// File the symlink points to
-    #[serde(borrow)]
-    pub target: &'link Path,
-}
-
-impl fmt::Display for Link<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} -> {}", self.path.display(), self.target.display())
+    fn try_from(contents: &'config str) -> Result<Self, Self::Error> {
+        let config = toml::from_str(contents)?;
+        Ok(config)
     }
 }
 
-impl<'config> Config<'config> {
-    pub fn from_toml(contents: &'config str) -> Self {
-        toml::from_str(contents).expect("Config file should be a valid TOML document")
+impl Config<'_> {
+    pub fn from_str(contents: &str) -> Result<Config<'_>, ConfigError> {
+        Config::try_from(contents)
     }
 }

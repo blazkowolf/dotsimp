@@ -1,3 +1,12 @@
+#![warn(deprecated_in_future)]
+#![warn(future_incompatible)]
+#![warn(nonstandard_style)]
+#![warn(rust_2018_compatibility)]
+#![warn(rust_2018_idioms)]
+#![warn(trivial_casts, trivial_numeric_casts)]
+#![warn(unused)]
+#![warn(clippy::all, clippy::pedantic)]
+
 use crate::args::DotsimpArgs;
 use crate::config::{App, Config};
 use crate::prelude::*;
@@ -7,11 +16,14 @@ use std::env;
 use std::fs;
 use std::io::{self, Stdout, Write};
 use std::path::PathBuf;
+use std::process::exit;
 
 mod args;
 mod config;
 mod error;
 mod prelude;
+
+const ENV_VAR_REGEX_STR: &str = r"(?P<var>\$(?P<name>\w+))";
 
 /// Main program state
 pub struct Dotsimp<'dotsimp> {
@@ -31,12 +43,11 @@ impl<'dotsimp> Dotsimp<'dotsimp> {
                 use std::io::ErrorKind::*;
 
                 // let var_re = Regex::new(r"\$(?P<var>\w+)").expect("This regex messed up somehow");
-                let var_re =
-                    Regex::new(r"(?P<var>\$(?P<name>\w+))").expect("This regex messed up somehow");
+                let var_re = Regex::new(ENV_VAR_REGEX_STR).expect("This regex messed up somehow");
 
                 let expanded_path = {
                     let path_str_lossy = &link.path.to_string_lossy();
-                    let path_str = var_re.replace_all(path_str_lossy, |caps: &Captures| {
+                    let path_str = var_re.replace_all(path_str_lossy, |caps: &Captures<'_>| {
                         env::var(&caps["name"]).unwrap()
                     });
                     PathBuf::from(path_str.to_string())
@@ -65,13 +76,19 @@ impl<'dotsimp> Dotsimp<'dotsimp> {
     }
 }
 
-fn main() -> Result<()> {
-    let args = DotsimpArgs::try_from(env::args_os())?;
+fn main() {
+    let args =
+        DotsimpArgs::try_from(env::args_os()).expect("dotsimp program arguments should be valid");
 
-    let config_path = args.config_file.canonicalize()?;
-    let config_contents = &fs::read_to_string(config_path)?;
+    let config_path = args
+        .config_file
+        .canonicalize()
+        .expect("configuration file path should be valid");
+    let config_contents =
+        &fs::read_to_string(config_path).expect("configuration file should exist");
 
-    let config = Config::from_toml(config_contents);
+    let config =
+        Config::from_str(config_contents).expect("configuration file contents should be valid");
     let writer = io::stdout();
     let dotsimp = Dotsimp {
         args,
@@ -79,7 +96,11 @@ fn main() -> Result<()> {
         writer,
     };
 
-    dotsimp.run()?;
-
-    Ok(())
+    match dotsimp.run() {
+        Ok(_) => exit(0),
+        Err(error) => {
+            eprintln!("{error}");
+            exit(1)
+        }
+    }
 }
